@@ -1,8 +1,6 @@
 // Create the input graph
 
-var g = new dagreD3.graphlib.Graph().setGraph({});
-
-var readNode = function (data, root) {
+var readNode = function (g, data, root) {
 	var opt = {label: ""};
 	data.firstName && (opt.label += data.firstName + " ");
 	data.middleName && (opt.label += data.middleName + " ");
@@ -27,20 +25,54 @@ var readNode = function (data, root) {
 	}
 };
 
-$.get("/api/people/2", function (data) {
-	readNode(data, true);
+var loadGraph = function(id){
+	$.get("/api/people/"+id, function (data) {
+		var g = new dagreD3.graphlib.Graph().setGraph({});
+		readNode(g, data, true);
 
-	// Create the renderer
-	var render = new dagreD3.render();
-	// Set up an SVG group so that we can translate the final graph.
-	var svg = d3.select("svg"),
-		inner = svg.append("g");
+		// Set up an SVG group so that we can translate the final graph.
+		var svg = d3.select("svg");
+		svg.selectAll("*").remove();    // clean up
+		var inner = svg.append("g");
 
-	// Run the renderer. This is what draws the final graph.
-	render(inner, g);
+		// Create the renderer
+		var render = new dagreD3.render();
 
-	// Center the graph
-	var xCenterOffset = (svg.attr("width") - g.graph().width) / 2;
-	inner.attr("transform", "translate(" + xCenterOffset + ", 20)");
-	svg.attr("height", g.graph().height + 40);
+		// Run the renderer. This is what draws the final graph.
+		render(inner, g);
+
+		// Center the graph
+		var xCenterOffset = ($(svg[0]).width() - g.graph().width) / 2;
+		inner.attr("transform", "translate(" + xCenterOffset + ", 20)");
+		svg.attr("height", g.graph().height + 40);
+	});
+};
+
+var peopleTemplate = $(".people-list .template");
+var page = 0;
+var nextPage = function(){
+	loadPageData(++page);
+};
+$(document).on("click", '.people-list .people', function(){
+	var peopleId = $(this).attr("data-id");
+	if (peopleId)
+		loadGraph(peopleId);
 });
+var loadPageData = function(page, filter){
+	$.get("/api/people?limit=10&page="+page+"&filter="+(filter||""), function(data) {
+		data.forEach(function(man){
+			var newRow = peopleTemplate.clone();
+			for (var k in man) {
+				newRow.find("."+k).text(man[k]);
+			}
+			newRow.attr("data-id", man.id);
+			newRow.insertBefore(peopleTemplate);
+		});
+		if (data.length < 10) {
+			peopleTemplate.remove();
+			$(".loadmore").remove();
+		}
+	});
+};
+// init
+loadPageData(0);

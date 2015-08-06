@@ -54,8 +54,9 @@ People.prototype.serialize = function(skip){
 			children : []
 		};
 	if (skip === true) {
-		if (self.parent1) out.parent1 = true;
-		if (self.parent2) out.parent2 = true;
+		out.parent = 0;
+		if (self.parent1) out.parent++;
+		if (self.parent2) out.parent++;
 		out.children = self.children.length;
 		return out;
 	}
@@ -101,7 +102,7 @@ People.find = function(offset, limit, filter){
 		index = 0,
 		totalPeople = Object.keys(people).length;
 	// search equal names
-	if (filter) {
+	if (filter&&filter.length) {
 		var firstNames = peopleIndex.get(filter);
 		if (firstNames && firstNames.length) {
 			while (out.length < limit && ++iterator<firstNames.length) {
@@ -114,12 +115,11 @@ People.find = function(offset, limit, filter){
 		iterator = -1;
 		index = 0;
 	}
-	console.log("--", out.length < limit, iterator, totalPeople)
 	// other
 	if (out.length < limit) {
 		for(var manId in people) {
 			man = people[manId];
-			if (!filter || man.firstName.toLowerCase().indexOf(filter)!==-1 || man.lastName.toLowerCase().indexOf(filter)!==-1) {
+			if (!filter || filter.length===0 || man.firstName.toLowerCase().indexOf(filter)!==-1 || man.lastName.toLowerCase().indexOf(filter)!==-1) {
 				if (index++ >= offset) {
 					out.push(man.serialize(true));
 				}

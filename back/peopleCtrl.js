@@ -1,7 +1,8 @@
 exports = module.exports = function(req, res) {
 
 	var People = require("./models/People"),
-		Q = require("q");
+		Q = require("q"),
+		URL = require("url");
 
 	var sendError = function(message){
 			res.writeHead(404);
@@ -34,11 +35,12 @@ exports = module.exports = function(req, res) {
 			return deferred.promise;
 		};
 
-	var peopleId = req.url.substr('/api/people/'.length);
+	var url = URL.parse(req.url, true);
+	var peopleId = url.pathname.substr('/api/people/'.length);
 
 	if (peopleId.length===0 && req.method !== "POST") {
 		if (req.method === "GET") { // get all
-			send(People.find(0, 10));
+			send(People.find(url.query.page*url.query.limit, url.query.limit, url.query.filter));
 		} else {
 			sendError('Unknown api');
 		}
