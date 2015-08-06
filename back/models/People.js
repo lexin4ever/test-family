@@ -57,26 +57,30 @@ People.prototype.serialize = function(skip){
 		out.parent = 0;
 		if (self.parent1) out.parent++;
 		if (self.parent2) out.parent++;
-		out.children = self.children.length;
+		out.childrenCount = self.children.length;
 		return out;
+	} else {
+		if (!skip) skip = [];
+		skip.push(self.id);
 	}
+
 	if (self.parent1) {
-		if (self.parent1 === skip) {
-			out.parent1 = self.parent1.id;
+		if (skip.indexOf(self.parent1.id) !== -1) {
+			out.parent1 = self.parent1.serialize(true);
 		} else {
-			out.parent1 = self.parent1.serialize(self);
+			out.parent1 = self.parent1.serialize(skip);
 		}
 	}
 	if (self.parent2) {
-		if (self.parent2 === skip) {
-			out.parent2 = self.parent2.id;
+		if (skip.indexOf(self.parent2.id) !== -1) {
+			out.parent2 = self.parent2.serialize(true);
 		} else {
-			out.parent2 = self.parent2.serialize(self);
+			out.parent2 = self.parent2.serialize(skip);
 		}
 	}
 	self.children.forEach(function(child){
-		if (child !== skip) {
-			out.children.push(child.serialize(self));
+		if (skip.indexOf(child.id) === -1) {
+			out.children.push(child.serialize(skip));
 		}
 	});
 	return out;

@@ -5,31 +5,31 @@
 var loadGraph = function(data){
 	var g = new dagreD3.graphlib.Graph().setGraph({}),
 		readNode = function (g, data, root) {
-			var opt = {label: ""};
+			var opt = {label: " "};
 			data.firstName && (opt.label += data.firstName + " ");
 			data.middleName && (opt.label += data.middleName + " ");
 			data.lastName && (opt.label += data.lastName + " ");
-			if (root) {
+			if (data.id === root) {
 				opt.style = "fill: #afa";
 			}
 			g.setNode(data.id, opt);
 			data.children.forEach(function (c) {
 				if (typeof c === "object") {
-					readNode(g, c);
+					readNode(g, c, root);
 					g.setEdge(data.id, c.id, {});
 				}
 			});
 			if (data.parent1 && typeof data.parent1 === "object") {
-				readNode(g, data.parent1);
+				readNode(g, data.parent1, root);
 				g.setEdge(data.parent1.id, data.id, {});
 			}
 			if (data.parent2 && typeof data.parent2 === "object") {
-				readNode(g, data.parent2);
+				readNode(g, data.parent2, root);
 				g.setEdge(data.parent2.id, data.id, {});
 			}
 		};
 
-	readNode(g, data, true);
+	readNode(g, data, data.id);
 
 	// Set up an SVG group so that we can translate the final graph.
 	var svg = d3.select("svg");
@@ -61,8 +61,8 @@ var loadMan = function(peopleId){
 		manId.value = data.id;
 
 		var blocks = {
-			parent: $('form.man').find('.parents ul').empty().show(),
-			children: $('form.man').find('.children ol').empty().show()
+			parent: $('form.man').find('.parents ul').empty(),
+			children: $('form.man').find('.children ol').empty()
 		};
 		var addParent = function(name){
 			var p1 = $("<li>").text(data[name].firstName);
@@ -98,7 +98,7 @@ var loadMan = function(peopleId){
 			blocks.children.append( c );
 		});
 
-		$('form.man').find('.remove').show();
+		$('form.man').find('.parents,.children,.remove').show();
 		$('.visualize').show().click(function(){
 			loadGraph(data);
 		});
