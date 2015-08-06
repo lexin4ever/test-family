@@ -1,32 +1,34 @@
-// Create the input graph
-
-var readNode = function (g, data, root) {
-	var opt = {label: ""};
-	data.firstName && (opt.label += data.firstName + " ");
-	data.middleName && (opt.label += data.middleName + " ");
-	data.lastName && (opt.label += data.lastName + " ");
-	if (root) {
-		opt.style = "fill: #afa";
-	}
-	g.setNode(data.id, opt);
-	data.children.forEach(function (c) {
-		if (typeof c === "object") {
-			readNode(g, c);
-			g.setEdge(data.id, c.id, {});
-		}
-	});
-	if (data.parent1 && typeof data.parent1 === "object") {
-		readNode(g, data.parent1);
-		g.setEdge(data.parent1.id, data.id, {});
-	}
-	if (data.parent2 && typeof data.parent2 === "object") {
-		readNode(g, data.parent2);
-		g.setEdge(data.parent2.id, data.id, {});
-	}
-};
-
+!(function($){
+/**
+ * Load graph data and show it
+ */
 var loadGraph = function(data){
-	var g = new dagreD3.graphlib.Graph().setGraph({});
+	var g = new dagreD3.graphlib.Graph().setGraph({}),
+		readNode = function (g, data, root) {
+			var opt = {label: ""};
+			data.firstName && (opt.label += data.firstName + " ");
+			data.middleName && (opt.label += data.middleName + " ");
+			data.lastName && (opt.label += data.lastName + " ");
+			if (root) {
+				opt.style = "fill: #afa";
+			}
+			g.setNode(data.id, opt);
+			data.children.forEach(function (c) {
+				if (typeof c === "object") {
+					readNode(g, c);
+					g.setEdge(data.id, c.id, {});
+				}
+			});
+			if (data.parent1 && typeof data.parent1 === "object") {
+				readNode(g, data.parent1);
+				g.setEdge(data.parent1.id, data.id, {});
+			}
+			if (data.parent2 && typeof data.parent2 === "object") {
+				readNode(g, data.parent2);
+				g.setEdge(data.parent2.id, data.id, {});
+			}
+		};
+
 	readNode(g, data, true);
 
 	// Set up an SVG group so that we can translate the final graph.
@@ -46,12 +48,10 @@ var loadGraph = function(data){
 	svg.attr("height", g.graph().height + 40);
 };
 
-var peopleTemplate = $(".people-list .template").hide();
-var page = 0;
-var nextPage = function(){
-	loadPageData(++page, $('.table-filter').val());
-};
-
+/**
+ * Load man into form,
+ * bind children/parent remove event
+ */
 var loadMan = function(peopleId){
 	// load man
 	$.get("/api/people/"+peopleId, function(data){
@@ -60,13 +60,16 @@ var loadMan = function(peopleId){
 		middleName.value = data.middleName;
 		manId.value = data.id;
 
-		var parentBlock = $('form.man').find('.parents ul').empty();
-		if (data.parent1) {
-			var p1 = $("<li>").text(data.parent1.firstName);
+		var blocks = {
+			parent: $('form.man').find('.parents ul').empty().show(),
+			children: $('form.man').find('.children ol').empty().show()
+		};
+		var addParent = function(name){
+			var p1 = $("<li>").text(data[name].firstName);
 			p1.click(function(){
 				// remove this relation
 				$.ajax({
-					url: "/api/relation/"+data.parent1.id+"/"+manId.value,
+					url: "/api/relation/"+data[name].id+"/"+manId.value,
 					method:"DELETE"
 				}).then(function(){
 					p1.remove();
@@ -74,24 +77,11 @@ var loadMan = function(peopleId){
 					alert("Что-то пошло не так");
 				});
 			});
-			parentBlock.append(p1);
-		}
-		if (data.parent2) {
-			var p1 = $("<li>").text(data.parent2.firstName);
-			p1.click(function(){
-				// remove this relation
-				$.ajax({
-					url: "/api/relation/"+data.parent2.id+"/"+manId.value,
-					method:"DELETE"
-				}).then(function(){
-					p1.remove();
-				}, function(e){
-					alert("Что-то пошло не так");
-				});
-			});
-			parentBlock.append(p1);
-		}
-		var childrenBlock = $('form.man').find('.children ol').empty();
+			blocks.parent.append(p1);
+		};
+		data.parent1 && addParent("parent1");
+		data.parent2 && addParent("parent2");
+
 		data.children.forEach(function(child){
 			var c = $("<li>").text(child.firstName);
 			c.click(function(){
@@ -105,64 +95,20 @@ var loadMan = function(peopleId){
 					alert("Что-то пошло не так");
 				});
 			});
-			childrenBlock.append( c );
+			blocks.children.append( c );
 		});
 
-		$('form.man').find('.parents,.children,.remove').show();
+		$('form.man').find('.remove').show();
 		$('.visualize').show().click(function(){
 			loadGraph(data);
 		});
 	});
-}
-$(document).on("click", '.people-list .people', function(){
-	var peopleId = $(this).attr("data-id");
-	if ($('.addchild').hasClass('active')){
-		// add this as children
-		$.post("/api/relation/"+manId.value+"/"+peopleId).then(function(){
-			$('.addchild').removeClass('active');
-			loadMan(manId.value);
-		}, function(e){
-			alert("Что-то пошло не так");
-		});
-	} else {
-		loadMan(peopleId)
-	}
-});
-
-$('form.man .remove').bind('click', function(){
-	$.ajax({
-		method: "DELETE",
-		url: "/api/people/"+manId.value
-	}).then(function(){
-		$('form.man')[0].reset();
-		alert("Удалён!");
-		$('.people-list .people').remove();
-		loadPageData(0, $('.table-filter').val());
-	}, function(e){
-		alert(e.responseText);
-	});
-});
-var loadPageData = function(page, filter){
-	$.get("/api/people?limit=10&page="+page+"&filter="+(filter||""), function(data) {
-		data.forEach(function(man){
-			var newRow = peopleTemplate.clone();
-			newRow.addClass('people').show();
-			for (var k in man) {
-				newRow.find("."+k).text(man[k]);
-			}
-			newRow.attr("data-id", man.id);
-			newRow.insertBefore(peopleTemplate);
-		});
-		if (data.length < 10) {
-			$(".loadmore").hide();
-		} else {
-			$(".loadmore").show();
-		}
-	});
 };
-// init
-loadPageData(0);
 
+/**
+ * reset form,
+ * submit form
+ */
 $('form.man').bind('reset', function(){
 	$('.visualize').unbind('click').hide();
 	$('form.man').find('.parents,.children,.remove').hide();
@@ -215,6 +161,68 @@ $('form.man').bind('reset', function(){
 	return false;
 });
 
+/**
+ * remove this man
+ */
+$('form.man .remove').bind('click', function(){
+	$.ajax({
+		method: "DELETE",
+		url: "/api/people/"+manId.value
+	}).then(function(){
+		$('form.man')[0].reset();
+		alert("Удалён!");
+		$('.people-list .people').remove();
+		loadPageData(0, $('.table-filter').val());
+	}, function(e){
+		alert(e.responseText);
+	});
+});
+
+/**
+ * add new child button
+ */
+$('.addchild').click(function(){
+	if ($(this).hasClass('active')){
+		$(this).removeClass('active');
+	} else {
+		$(this).addClass('active');
+		alert('А теперь найдите его ребёнка и ткните на него (в таблице)\r\nИли ещё раз на эту кнопку, чтоб отменить');
+	}
+});
+
+
+var peopleTemplate = $(".people-list .template").hide();
+var page = 0;
+var nextPage = function(){
+	loadPageData(++page, $('.table-filter').val());
+};
+/**
+ * Load data in table view
+ */
+$(".loadmore").click(function(){
+	nextPage()
+});
+var loadPageData = function(page, filter){
+	$.get("/api/people?limit=10&page="+page+"&filter="+(filter||""), function(data) {
+		data.forEach(function(man){
+			var newRow = peopleTemplate.clone();
+			newRow.addClass('people').show();
+			for (var k in man) {
+				newRow.find("."+k).text(man[k]);
+			}
+			newRow.attr("data-id", man.id);
+			newRow.insertBefore(peopleTemplate);
+		});
+		if (data.length < 10) {
+			$(".loadmore").hide();
+		} else {
+			$(".loadmore").show();
+		}
+	});
+};
+/**
+ * Filter data in table view
+ */
 var filterDelay;
 $('.table-filter').bind("keyup", function(){
 	var text = $(this).val();
@@ -225,12 +233,25 @@ $('.table-filter').bind("keyup", function(){
 	}, 100);
 });
 
-$('.addchild').click(function(){
-	if ($(this).hasClass('active')){
-		$(this).removeClass('active');
+/**
+ * click on table -> load man
+ */
+$(document).on("click", '.people-list .people', function(){
+	var peopleId = $(this).attr("data-id");
+	if ($('.addchild').hasClass('active')){
+		// add this as children
+		$.post("/api/relation/"+manId.value+"/"+peopleId).then(function(){
+			$('.addchild').removeClass('active');
+			loadMan(manId.value);
+		}, function(e){
+			alert("Что-то пошло не так");
+		});
 	} else {
-		$(this).addClass('active');
-		alert('А теперь найдите его ребёнка и ткните на него (в таблице)\r\nИли ещё раз на эту кнопку, чтоб отменить');
+		loadMan(peopleId)
 	}
-
 });
+
+// init
+loadPageData(0);
+
+}(jQuery));
