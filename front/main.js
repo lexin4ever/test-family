@@ -11,16 +11,16 @@ var readNode = function (g, data, root) {
 	g.setNode(data.id, opt);
 	data.children.forEach(function (c) {
 		if (typeof c === "object") {
-			readNode(c);
+			readNode(g, c);
 			g.setEdge(data.id, c.id, {});
 		}
 	});
 	if (data.parent1 && typeof data.parent1 === "object") {
-		readNode(data.parent1);
+		readNode(g, data.parent1);
 		g.setEdge(data.parent1.id, data.id, {});
 	}
 	if (data.parent2 && typeof data.parent2 === "object") {
-		readNode(data.parent2);
+		readNode(g, data.parent2);
 		g.setEdge(data.parent2.id, data.id, {});
 	}
 };
@@ -51,19 +51,50 @@ var page = 0;
 var nextPage = function(){
 	loadPageData(++page, $('.table-filter').val());
 };
+
+var loadMan = function(peopleId){
+	// load man
+	$.get("/api/people/"+peopleId, function(data){
+		firstName.value = data.firstName;
+		lastName.value = data.lastName;
+		middleName.value = data.middleName;
+		manId.value = data.id;
+
+		var childrenBlock = $('form.man').find('.children ol').empty();
+		data.children.forEach(function(child){
+			var c = $("<li>").text(child.firstName);
+			c.click(function(){
+				// remove this relation
+				$.ajax({
+					url: "/api/relation/"+manId.value+"/"+child.id,
+					method:"DELETE"
+				}).then(function(){
+					c.remove();
+				}, function(e){
+					alert("Что-то пошло не так");
+				});
+			});
+			childrenBlock.append( c );
+		});
+
+		$('form.man').find('.parents,.children,.remove').show();
+		$('.visualize').show().click(function(){
+			loadGraph(data);
+		});
+	});
+}
 $(document).on("click", '.people-list .people', function(){
 	var peopleId = $(this).attr("data-id");
-	if (peopleId) {
-		$.get("/api/people/"+peopleId, function(data){
-			firstName.value = data.firstName;
-			lastName.value = data.lastName;
-			middleName.value = data.middleName;
-			manId.value = data.id;
-			$('form.man').find('.parents,.children,.remove').show();
-			$('.visualize').show().click(function(){
-				loadGraph(data);
-			});
+	if ($('.addchild').hasClass('active')){
+		// add this as children
+		$.post("/api/relation/"+manId.value+"/"+peopleId).then(function(){
+			$('.addchild').removeClass('active');
+			loadMan(manId.value);
+		}, function(e){
+			alert("Что-то пошло не так");
 		});
+	} else {
+		loadMan(peopleId)
 	}
 });
 
@@ -162,4 +193,14 @@ $('.table-filter').bind("keyup", function(){
 		$('.people-list .people').remove();
 		loadPageData(0, text);
 	}, 100);
+});
+
+$('.addchild').click(function(){
+	if ($(this).hasClass('active')){
+		$(this).removeClass('active');
+	} else {
+		$(this).addClass('active');
+		alert('А теперь найдите его ребёнка и ткните на него (в таблице)\r\nИли ещё раз на эту кнопку, чтоб отменить');
+	}
+
 });

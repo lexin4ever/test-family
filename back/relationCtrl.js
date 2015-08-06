@@ -49,7 +49,7 @@ exports = module.exports = function(req, res) {
 				child = answer[1];
 			if (req.method === "DELETE") {
 				// delete relation
-				parent.removeClildren(child);
+				parent.removeChildren(child);
 			} else {
 				// add relation
 				parent.addChildren(child);
