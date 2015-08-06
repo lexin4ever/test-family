@@ -97,6 +97,7 @@ People.findById = function(id){
 
 People.find = function(offset, limit, filter){
 	var out = [],
+		outIds = [],    // store id to prevent dubs
 		iterator = -1,
 		man,
 		index = 0,
@@ -105,9 +106,20 @@ People.find = function(offset, limit, filter){
 	if (filter&&filter.length) {
 		var firstNames = peopleIndex.get(filter);
 		if (firstNames && firstNames.length) {
-			while (out.length < limit && ++iterator<firstNames.length) {
+			while (outIds.length < limit && ++iterator<firstNames.length) {
 				if (index++ >= offset) {
-					out.push( firstNames[iterator].serialize(true) );
+					outIds.push(firstNames[iterator]);
+				}
+			}
+		}
+		// reset
+		iterator = -1;
+		index = 0;
+		var lastNames = peopleIndex.get(filter);
+		if (lastNames && lastNames.length) {
+			while (outIds.length < limit && ++iterator<firstNames.length) {
+				if (index++ >= offset && outIds.indexOf(firstNames[iterator]) === -1) {
+					outIds.push(firstNames[iterator]);
 				}
 			}
 		}
@@ -116,17 +128,20 @@ People.find = function(offset, limit, filter){
 		index = 0;
 	}
 	// other
-	if (out.length < limit) {
+	if (outIds.length < limit) {
 		for(var manId in people) {
 			man = people[manId];
 			if (!filter || filter.length===0 || man.firstName.toLowerCase().indexOf(filter)!==-1 || man.lastName.toLowerCase().indexOf(filter)!==-1) {
-				if (index++ >= offset) {
-					out.push(man.serialize(true));
+				if (index++ >= offset && outIds.indexOf(man.id) === -1) {
+					outIds.push(man.id);
 				}
 			}
-			if (out.length === limit) break
+			if (outIds.length === limit) break
 		}
 	}
+	outIds.forEach(function(id){
+		out.push(people[id].serialize(true));
+	});
 
 	return out;
 };
@@ -139,6 +154,7 @@ People.prototype.update = function(data){
 	this.middleName = data.middleName;
 	this.index(this.firstName);
 	this.index(this.lastName);
+	return this;
 };
 
 People.prototype.addChildren = function(child){
@@ -168,8 +184,8 @@ People.prototype.removeChildren = function(child){
 People.prototype.remove = function(){
 	var self = this;
 	// remove from parents
-	self.parent1.removeChildren(self);
-	self.parent2.removeChildren(self);
+	self.parent1 && self.parent1.removeChildren(self);
+	self.parent2 && self.parent2.removeChildren(self);
 
 	var child;
 	while (child = self.children[0]) {

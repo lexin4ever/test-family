@@ -26,6 +26,7 @@ exports = module.exports = function(req, res) {
 				}
 			});
 			req.on('end', function(){
+				console.log( body )
 				try{
 					deferred.resolve(JSON.parse(body));
 				}catch(e){
@@ -79,6 +80,7 @@ exports = module.exports = function(req, res) {
 				People.findById(peopleId)
 					.then(function(man){
 						man.remove();
+						return {};
 					}, sendError)
 					.then(send);
 				break;

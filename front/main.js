@@ -25,43 +25,67 @@ var readNode = function (g, data, root) {
 	}
 };
 
-var loadGraph = function(id){
-	$.get("/api/people/"+id, function (data) {
-		var g = new dagreD3.graphlib.Graph().setGraph({});
-		readNode(g, data, true);
+var loadGraph = function(data){
+	var g = new dagreD3.graphlib.Graph().setGraph({});
+	readNode(g, data, true);
 
-		// Set up an SVG group so that we can translate the final graph.
-		var svg = d3.select("svg");
-		svg.selectAll("*").remove();    // clean up
-		var inner = svg.append("g");
+	// Set up an SVG group so that we can translate the final graph.
+	var svg = d3.select("svg");
+	svg.selectAll("*").remove();    // clean up
+	var inner = svg.append("g");
 
-		// Create the renderer
-		var render = new dagreD3.render();
+	// Create the renderer
+	var render = new dagreD3.render();
 
-		// Run the renderer. This is what draws the final graph.
-		render(inner, g);
+	// Run the renderer. This is what draws the final graph.
+	render(inner, g);
 
-		// Center the graph
-		var xCenterOffset = ($(svg[0]).width() - g.graph().width) / 2;
-		inner.attr("transform", "translate(" + xCenterOffset + ", 20)");
-		svg.attr("height", g.graph().height + 40);
-	});
+	// Center the graph
+	var xCenterOffset = ($(svg[0]).width() - g.graph().width) / 2;
+	inner.attr("transform", "translate(" + xCenterOffset + ", 20)");
+	svg.attr("height", g.graph().height + 40);
 };
 
-var peopleTemplate = $(".people-list .template");
+var peopleTemplate = $(".people-list .template").hide();
 var page = 0;
 var nextPage = function(){
-	loadPageData(++page);
+	loadPageData(++page, $('.table-filter').val());
 };
 $(document).on("click", '.people-list .people', function(){
 	var peopleId = $(this).attr("data-id");
-	if (peopleId)
-		loadGraph(peopleId);
+	if (peopleId) {
+		$.get("/api/people/"+peopleId, function(data){
+			firstName.value = data.firstName;
+			lastName.value = data.lastName;
+			middleName.value = data.middleName;
+			manId.value = data.id;
+			$('form.man').find('.parents,.children,.remove').show();
+			$('.visualize').show().click(function(){
+				loadGraph(data);
+			});
+		});
+	}
+});
+
+$('form.man .remove').bind('click', function(){
+	$.ajax({
+		method: "DELETE",
+		url: "/api/people/"+manId.value
+	}).then(function(){
+		$('form.man')[0].reset();
+		manId.value = "";
+		alert("Удалён!");
+		$('.people-list .people').remove();
+		loadPageData(0, $('.table-filter').val());
+	}, function(e){
+		alert(e.responseText);
+	});
 });
 var loadPageData = function(page, filter){
 	$.get("/api/people?limit=10&page="+page+"&filter="+(filter||""), function(data) {
 		data.forEach(function(man){
 			var newRow = peopleTemplate.clone();
+			newRow.addClass('people').show();
 			for (var k in man) {
 				newRow.find("."+k).text(man[k]);
 			}
@@ -69,10 +93,73 @@ var loadPageData = function(page, filter){
 			newRow.insertBefore(peopleTemplate);
 		});
 		if (data.length < 10) {
-			peopleTemplate.remove();
-			$(".loadmore").remove();
+			$(".loadmore").hide();
+		} else {
+			$(".loadmore").show();
 		}
 	});
 };
 // init
 loadPageData(0);
+
+$('form.man').bind('reset', function(){
+	$('.visualize').unbind('click').hide();
+	$('form.man').find('.parents,.children,.remove').hide();
+}).submit(function(e){
+	e.preventDefault();
+	var form = $(this);
+	if (manId.value) {
+		// change person
+		$.ajax({
+			method: "PUT",
+			url: "/api/people/"+manId.value,
+			contentType : "application/json",
+			dataType: "json",
+			data: JSON.stringify({
+				firstName: firstName.value,
+				lastName: lastName.value,
+				middleName: middleName.value
+			})
+		}).then(function(){
+			form[0].reset();
+			manId.value = "";
+			alert("Изменён!");
+			$('.people-list .people').remove();
+			loadPageData(0, $('.table-filter').val());
+		}, function(e){
+			alert(e.responseText);
+		});
+	} else {
+		// create person
+		$.ajax({
+			method: "POST",
+			url: "/api/people/",
+			contentType : "application/json",
+			dataType: "json",
+			data: JSON.stringify({
+				firstName: form.find("#firstName").val(),
+				lastName: form.find("#lastName").val(),
+				middleName: form.find("#middleName").val()
+			})
+		}).then(function(){
+			form[0].reset();
+			alert("Добавлен!");
+			$('.people-list .people').remove();
+			loadPageData(0, $('.table-filter').val());
+		}, function(e){
+			alert(e.responseText);
+		});
+	}
+
+	return false;
+});
+
+var filterDelay;
+$('.table-filter').bind("keyup", function(){
+	var text = $(this).val();
+	clearTimeout(filterDelay);
+	filterDelay = setTimeout(function(){
+		$('.people-list .people').remove();
+		loadPageData(0, text);
+	}, 100);
+});

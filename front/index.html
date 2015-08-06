@@ -40,8 +40,10 @@
 <div class="container">
 	<h1>Hello, world!</h1>
 
+	<svg id="svg" width="100%" height="50px"></svg>
 	<div class="row">
 		<div class="col-md-8">
+			<input type="text" class="table-filter" style="width: 100%" placeholder="фильтр" />
 			<table class="table table-hover people-list">
 				<tr>
 					<th>Фамилия</th>
@@ -50,7 +52,7 @@
 					<th width="60">Родителей</th>
 					<th width="60">Детей</th>
 				</tr>
-				<tr class="template people">
+				<tr class="template">
 					<td class="lastName"></td>
 					<td class="firstName"></td>
 					<td class="middleName"></td>
@@ -60,8 +62,36 @@
 				<tr class="loadmore text-center" onclick="nextPage()"><td colspan="5">Загрузить ещё</td></tr>
 			</table>
 		</div>
+
 		<div class="col-md-4">
-			<svg id="svg" width="100%" height="50px"></svg>
+			<form class="man">
+				<button type="reset" class="close"><span aria-hidden="true">&times;</span></button>
+				<input type="hidden" class="form-control" id="manId">
+				<div class="form-group">
+					<label for="lastName">Фамилия</label>
+					<input type="text" class="form-control" id="lastName" placeholder="Фамилия">
+				</div>
+				<div class="form-group">
+					<label for="firstName">Имя</label>
+					<input type="text" class="form-control" id="firstName" placeholder="Имя">
+				</div>
+				<div class="form-group">
+					<label for="middleName">Отчество</label>
+					<input type="text" class="form-control" id="middleName" placeholder="Отчество">
+				</div>
+				<div class="form-group parents" style="display:none">
+					<label>Родители</label>
+				</div>
+				<div class="form-group children" style="display:none">
+					<label>Дети</label>
+					<button type="button" class="btn">Добавить ребёнка</button>
+				</div>
+				<button type="submit" class="btn btn-primary">Сохранить</button>
+				<div class="btn-group" role="group">
+					<button type="button" class="btn btn-default remove" style="display:none">Удалить</button>
+					<button type="button" class="btn btn-default visualize" style="display:none">Граф</button>
+				</div>
+			</form>
 		</div>
 	</div>
 
