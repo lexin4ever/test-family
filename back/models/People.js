@@ -2,7 +2,7 @@ var people = {},
 	generator= 0,
 	Q = require("q"),
 	HashMap = require('HashMap'),
-	peopleIndex = new HashMap(32);
+	peopleIndex = new HashMap(32);  // highload ready, lol
 
 /* constructor */
 var People = function(data){
@@ -102,7 +102,7 @@ People.find = function(offset, limit, filter){
 		man,
 		index = 0,
 		totalPeople = Object.keys(people).length;
-	// search equal names
+	// search equal names in index
 	if (filter&&filter.length) {
 		var firstNames = peopleIndex.get(filter);
 		if (firstNames && firstNames.length) {

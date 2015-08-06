@@ -60,6 +60,37 @@ var loadMan = function(peopleId){
 		middleName.value = data.middleName;
 		manId.value = data.id;
 
+		var parentBlock = $('form.man').find('.parents ul').empty();
+		if (data.parent1) {
+			var p1 = $("<li>").text(data.parent1.firstName);
+			p1.click(function(){
+				// remove this relation
+				$.ajax({
+					url: "/api/relation/"+data.parent1.id+"/"+manId.value,
+					method:"DELETE"
+				}).then(function(){
+					p1.remove();
+				}, function(e){
+					alert("Что-то пошло не так");
+				});
+			});
+			parentBlock.append(p1);
+		}
+		if (data.parent2) {
+			var p1 = $("<li>").text(data.parent2.firstName);
+			p1.click(function(){
+				// remove this relation
+				$.ajax({
+					url: "/api/relation/"+data.parent2.id+"/"+manId.value,
+					method:"DELETE"
+				}).then(function(){
+					p1.remove();
+				}, function(e){
+					alert("Что-то пошло не так");
+				});
+			});
+			parentBlock.append(p1);
+		}
 		var childrenBlock = $('form.man').find('.children ol').empty();
 		data.children.forEach(function(child){
 			var c = $("<li>").text(child.firstName);
@@ -104,7 +135,6 @@ $('form.man .remove').bind('click', function(){
 		url: "/api/people/"+manId.value
 	}).then(function(){
 		$('form.man')[0].reset();
-		manId.value = "";
 		alert("Удалён!");
 		$('.people-list .people').remove();
 		loadPageData(0, $('.table-filter').val());
@@ -136,6 +166,7 @@ loadPageData(0);
 $('form.man').bind('reset', function(){
 	$('.visualize').unbind('click').hide();
 	$('form.man').find('.parents,.children,.remove').hide();
+	manId.value = "";
 }).submit(function(e){
 	e.preventDefault();
 	var form = $(this);
@@ -153,7 +184,6 @@ $('form.man').bind('reset', function(){
 			})
 		}).then(function(){
 			form[0].reset();
-			manId.value = "";
 			alert("Изменён!");
 			$('.people-list .people').remove();
 			loadPageData(0, $('.table-filter').val());
