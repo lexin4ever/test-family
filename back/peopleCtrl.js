@@ -38,7 +38,7 @@ exports = module.exports = function(req, res) {
 
 	if (peopleId.length===0 && req.method !== "POST") {
 		if (req.method === "GET") { // get all
-			send(People.all());
+			send(People.find(0, 10));
 		} else {
 			sendError('Unknown api');
 		}
@@ -54,10 +54,9 @@ exports = module.exports = function(req, res) {
 				break;
 			case "POST":
 				collectPostData().then(function(body){
-					console.log( body )
 					return new People(body);
 				}, sendError).then(function(man){
-					return man.serialize()
+					return man.serialize();
 				}).then(send);
 				break;
 			case "PUT":

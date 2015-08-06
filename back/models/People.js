@@ -1,6 +1,8 @@
 var people = {},
 	generator= 0,
-	Q = require("q");
+	Q = require("q"),
+	HashMap = require('HashMap'),
+	peopleIndex = new HashMap(32);
 
 /* constructor */
 var People = function(data){
@@ -16,8 +18,28 @@ var People = function(data){
 	this.parent1 = null;
 	this.parent2 = null;
 	this.children = [];
+
+	this.index(this.firstName);
+	this.index(this.lastName);
 };
 
+People.prototype.index = function(key, remove){
+	var oldV = peopleIndex.get(key),
+		v = oldV ? oldV.slice() : [];
+	if (remove) {
+		var inx = v.indexOf(this.id);
+		v.splice(inx, 1);
+	} else {
+		v.push(this.id);
+	}
+	peopleIndex.put(key, v);
+};
+
+/**
+ * Serialize model.
+ * @param {Boolean|People} skip Pass true if you want only id and name, pass People to prevent circular dependencies.
+ * @return {{id: (number|*), firstName: *, lastName: *, middleName: *, parent1: null, parent2: null, children: Array}}
+ */
 People.prototype.serialize = function(skip){
 	var self = this,
 		out = {
@@ -27,10 +49,16 @@ People.prototype.serialize = function(skip){
 			middleName : self.middleName,
 
 			// relations
-			parent1 : null,
-			parent2 : null,
+			parent1 : false,
+			parent2 : false,
 			children : []
 		};
+	if (skip === true) {
+		if (self.parent1) out.parent1 = true;
+		if (self.parent2) out.parent2 = true;
+		out.children = self.children.length;
+		return out;
+	}
 	if (self.parent1) {
 		if (self.parent1 === skip) {
 			out.parent1 = self.parent1.id;
@@ -65,14 +93,52 @@ People.findById = function(id){
 	});
 	return deferred.promise;
 };
-People.all = function(){
-	return people;
+
+People.find = function(offset, limit, filter){
+	var out = [],
+		iterator = -1,
+		man,
+		index = 0,
+		totalPeople = Object.keys(people).length;
+	// search equal names
+	if (filter) {
+		var firstNames = peopleIndex.get(filter);
+		if (firstNames && firstNames.length) {
+			while (out.length < limit && ++iterator<firstNames.length) {
+				if (index++ >= offset) {
+					out.push( firstNames[iterator].serialize(true) );
+				}
+			}
+		}
+		// reset
+		iterator = -1;
+		index = 0;
+	}
+	console.log("--", out.length < limit, iterator, totalPeople)
+	// other
+	if (out.length < limit) {
+		for(var manId in people) {
+			man = people[manId];
+			if (!filter || man.firstName.toLowerCase().indexOf(filter)!==-1 || man.lastName.toLowerCase().indexOf(filter)!==-1) {
+				if (index++ >= offset) {
+					out.push(man.serialize(true));
+				}
+			}
+			if (out.length === limit) break
+		}
+	}
+
+	return out;
 };
 
 People.prototype.update = function(data){
+	this.index(this.firstName, true);
+	this.index(this.lastName, true);
 	this.firstName = data.firstName;
 	this.lastName = data.lastName;
 	this.middleName = data.middleName;
+	this.index(this.firstName);
+	this.index(this.lastName);
 };
 
 People.prototype.addChildren = function(child){
@@ -101,7 +167,6 @@ People.prototype.removeChildren = function(child){
 
 People.prototype.remove = function(){
 	var self = this;
-	delete people[self.id];
 	// remove from parents
 	self.parent1.removeChildren(self);
 	self.parent2.removeChildren(self);
@@ -110,6 +175,7 @@ People.prototype.remove = function(){
 	while (child = self.children[0]) {
 		self.removeChildren(child);
 	}
+	delete people[self.id];
 };
 
 
